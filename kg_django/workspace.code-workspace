@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../KG"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"python.pythonPath": "/Users/hjg/anaconda3/bin/python"
+	}
+}

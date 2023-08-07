@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>知识查询</title>
+    <!--设置过期时间设置0为直接过期并清除缓存-->
+    <meta http-equiv="Expires" content="0">
+    <!--设置不缓存页面-->
+    <meta http-equiv="Pragma" content="no-cache">
+    <!--设置不修改消息存储-->
+    <meta http-equiv="Cache-control" content="no-cache">
+    <!--同上-->
+    <meta http-equiv="Cache" content="no-cache">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+        html, body {
+          font: 10pt arial;
+        }
+        #mynetwork {
+          width: 600px;
+          height: 560px;
+          border: 1px solid lightgray;
+        }
+        #resultinfo {
+          width: 600px;
+          height: 100%;
+          border: 1px solid lightgray;
+          padding: 10px;
+        }
+        #sameinfo {
+          width: 600px;
+          height: 100%;
+          border: 1px solid lightgray;
+          padding: 10px;
+        }
+        #mytable td{
+            padding:10px 18px
+        }
+        #mytable tbody tr .tname:hover  {
+        background-color: #0180FE;
+        color: #fff;
+        cursor:pointer;
+        }
+        .dataTable tr:hover td {background:none;}
+        em{
+            color:red;
+        }
+    </style>
+    <script type="text/javascript" src="static/js/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="static/dist/vis.js"></script>
+    <script type="text/javascript" src="static/bootstrap-3.3.7-dist/js/bootstrap.js"></script>
+    <script type="text/javascript" src="static/js/bootstrap-slider.js"></script>
+    <script type="text/javascript" src="static/js/jquery.dataTables.min.js"></script>
+    <link  href="static/dist/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <link  href="static/bootstrap-3.3.7-dist/css/bootstrap.css" rel="stylesheet">
+    <link  href="static/bootstrap-3.3.7-dist/css/bootstrap-theme.css" rel="stylesheet">
+    <link  href="static/css/slider.css" rel="stylesheet">
+    <link  href="static/css/jquery.dataTables.min.css" rel="stylesheet">
+</head>
+
+<body onload="draw()">
+    <div class="row" style="">
+		<div class="span6">
+			<ul class="nav nav-tabs" style="margin-left:1%;">
+				<li><a href="graph.html">规范文本</a> </li>
+				<!--<li><a href="search_spec.html">关键词匹配</a> </li>-->
+				<li class="active"><a href="near.html">知识查询</a> </li>
+                <li><a href="path.html">路径查询</a></li>
+                <!--<li><a href="add_post.html">人工操作</a></li>-->
+			</ul>
+		</div>
+	</div>
+    <hr>
+    <div id="main-container" class="container" style="margin-left: 0;padding-left:0px;width:100%;">
+        <div class="row">
+            <div class="col-md-5 col-sm-12 col-xs-12">
+                <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <form action="/find_near" method="get">
+                                <div class="row">
+                                    <div class="col-lg-4 col-sm-4">
+                                        <input type="text" class="form-control" name="htitle" id="pname" name="p" placeholder="节点名称">
+                                        <div class="errormessage"></div>
+                                    </div>
+                                    <div class="col-lg-4 col-sm-4">
+                                        <label for="ex1">最大邻居个数：</label>
+                                        <input id="ex1" data-slider-id='ex1Slider' name="maxnear" type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" data-slider-value="20"/>
+                                    </div>
+                                    <div class="col-lg-4 col-sm-4">
+                                        <label for="ex1">显示邻居间关系：</label></br>
+                                            <input type="radio" name="optionsRadios" id="optionsRadios1" value="1" checked> 否
+                                            <input type="radio" name="optionsRadios" id="optionsRadios2" value="2"> 是
+                                    </div>
+                                    <!--
+                                    <div class="dropdown col-lg-4 col-sm-4">
+                                        <select class="form-control btn btn-default" style="margin-top:7px;" id='btn-if-then' onchange="onChangeAboutIfThen(this)">
+                                            <option value="ALL">IF THEN类型(ALL)</option>
+                                            <option value="IF">IF</option>
+                                            <option value="THEN">THEN</option>
+                                        </select>
+                                    </div>-->
+                                    <div class="dropdown col-lg-4 col-sm-4">
+                                        <select class="form-control btn btn-default" style="margin-top:7px;" id='btn-rel' onchange="onChangeAboutRel(this)">
+                                            <option value="ALL">关系类型(ALL)</option>
+                                            <option value="属性">属性</option>
+                                            <option value="非属性">非属性</option>
+                                            <option value="包含">包含</option>
+                                            <option value="方位">方位</option>
+                                            <option value="制约">制约</option>
+                                            <option value="定义">定义</option>
+                                            <option value="连接">连接</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-4 col-sm-4">
+                                        <input type="button" class="btn btn-default" style="margin-top:7px" name="Submit" value="查&nbsp;&nbsp;&nbsp;&nbsp;询" id='btn-commit' />
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="panel-body">
+                            <div id="mynetwork" class="center-block" style="width:100%"></div>
+                            <div class="popover right" role="tooltip" style="max-width:50%" id="mypopever">
+                                <div class="arrow" style="top: 30px"></div>
+                                <div class="popover-inner">
+                                    <div class="popover-title">My Title</div>
+                                    <div id="systemInfo" class="popover-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-footer">
+                            <div id="resultinfo" style="width:100%"></div>
+                        </div>
+                        <div class="panel-footer">
+                            <div id="sameinfo" style="width:100%"></div>
+                        </div>
+                </div>
+            </div>
+            <div class="col-md-7 col-sm-12 col-xs-12" >
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <a class="btn btn-success"></a>
+                    </div>
+                    <div class="panel-body" style="" id="resultbody">
+                        <div id="result">
+                            <h3><span id="resulttitle">搜索结果</span></h3>
+                        </div>
+                    </div>
+                    <div class="panel-footer">
+                        <div id="canvastitle" style="width:100%"></div>
+                        <div id="canvasinfo" style="margin-left:-5px"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" id="hid" value="20"></input>
+    <script type="text/javascript">
+
+        var BASE_URL = "http://127.0.0.1:8010/";
+        var DEBUG = true;  // true;
+        var nodeset ;
+        var nodes = [];
+        var edges = [];
+        var network = null;
+        var maxn = 20;
+        var mr = 1;
+        var query_mode = "ALL"
+        var rel_mode = "ALL"
+        var color_list = ['#000000', '#8B0000', '#8CE600', '#FFCC00', '#FF4D00', '#F28500', '#89CFF0', '#20B2AA', '#003399', '#800080']
+        var if_then_color_list = ['#000000', '#A52A2A', '#114499']
+        var rel_map = {
+            "未包含": '#000000',
+            "连接": '#8B0000',
+            "包含": '#8CE600',
+            "属性": '#FFCC00',
+            "定义": '#FF4D00',
+            "制约": '#F28500',
+            "方位": '#89CFF0',
+            "状态": '#20B2AA'
+        }
+        /*
+        $(window).resize(function() {
+            network.fit();
+        });*/
+        $(document).bind('keypress',function(e){
+            if(e.keyCode==13){
+                $("#btn-commit").trigger("click");
+            }
+        })
+        $('body').on('click', function(event) {
+            var target = $(event.target); // One jQuery object instead of 3
+
+            // Compare length with an integer rather than with
+            if (!target.hasClass('popover')
+                && target.parent('.popover-content').length === 0
+                && target.parent('.myPopover').length === 0
+                && target.parent('.popover-title').length === 0
+                && target.parent('.popover').length === 0 && target.attr("id") !== "folder") {
+                    if (DEBUG) {
+                        console.log("a");
+                    }
+                    $('#mypopever').hide();
+                }
+        });
+        /*
+        function onChangeAboutIfThen(obj){ 
+            query_mode = obj.options[obj.selectedIndex].value;
+        };*/
+        function onChangeAboutRel(obj){ 
+            rel_mode = obj.options[obj.selectedIndex].value;
+        };
+        function loadImg(canvas_id, pic_name, is_title, pos_coord, word_name) {
+            var canvas = document.getElementById(canvas_id);
+            var ctx = canvas.getContext("2d");
+            var img = new Image();
+            img.src = "/static/img/" + pic_name.toString() + ".jpeg";
+            img.onload = function () {
+                canvas.width = 800;
+                //canvas.height = 800;
+                imgWidth = img.width;
+                imgHeight = img.height;
+                scale = 1.0
+                if (img.width > canvas.width) {
+                    imgWidth = canvas.width
+                    imgHeight = (img.height * canvas.width) / img.width;
+                    scale = canvas.width / img.width;
+                }
+                //ctx.scale(scale, scale)
+                canvas.height = imgHeight;
+                ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
+                if (pos_coord == []) {
+                    return
+                }
+                if (is_title) {
+                    [mark_x, mark_y] = pos_coord;
+                    mark_x = mark_x * scale;
+                    mark_y = mark_y * scale;
+                    ctx.font  = "20px sans-serif"
+                    ctx.fillStyle = '#228B22' // '#1a0'
+                    ctx.fillText(word_name, mark_x, mark_y);
+                }
+                else {
+                    pos_len = pos_coord.length;
+                    for (var i = 0; i < pos_len; i += 4) {
+                        mark_x = pos_coord[i];
+                        mark_y = pos_coord[i + 1];
+                        mark_w = pos_coord[i + 2];
+                        mark_h = pos_coord[i + 3];
+                        mark_x = mark_x * scale;
+                        mark_y = mark_y * scale;
+                        mark_w = mark_w * scale;
+                        mark_h = mark_h * scale;
+                        ctx.strokeStyle = '#228B22'; // '#1a0'
+                        ctx.lineWidth = 3;
+                        pad = 2;
+                        ctx.strokeRect(mark_x - pad, mark_y - pad, mark_w + pad * 2, mark_h + pad * 2);
+                    }
+                }
+            }
+        }
+        $(document).ready(function(){
+            //模拟动态加载标题
+            slide = $('#ex1').slider({
+                formatter: function(value) {
+                    maxn = value;
+                return 'Current value: ' + value;
+                }
+            });
+            $("#ex1").on("slide", function(slideEvt) {
+                $("#hid").val(slideEvt.value);
+            });
+            $("#btn-commit").click(function(){
+                var name = $("#pname").val();
+                var origin_name = name;
+                if(name==""){
+                    alert("请输入节点名称");
+                    $("#resulttitle").html("搜索结果")
+                    $("#result").html("");
+                    $("#resultinfo").html("");
+                    $("#sameinfo").html("");
+                    $("#mynetwork").html("");
+                    //that.button("reset");
+                    return ;
+                }
+                $(this).button("loading");
+                var lohtml = "<div class='progress progress-striped active' style='margin-top:40%'><div class='progress-bar progress-bar-success' role='progressbar'aria-valuenow='60' aria-valuemin='0' aria-valuemax='100'style='width: 40%;'> <span class='sr-only'>40% 完成</span> </div> <div>"
+                //lohtml = "html";
+                $("#mynetwork").html(lohtml);
+                //$("#result").html("<h3><span id='resulttitle'>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的条文信息"+"</span></h3>");
+                //$("#resultinfo").html("<h3><span>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的图谱知识"+"</span></h3>");
+                len = name.split("&").length;
+                if(len>1){
+                    if(name.split("&")[0]==""&&name.split("&")[1]!=""){
+                        location.href="near.html?name="+name.split("&")[1];
+                        that.button("reset");
+                        return ;
+                    }
+                    else if(name.split("&")[1]==""&&name.split("&")[0]!=""){
+                        location.href="near.html?name="+name.split("&")[0];
+                        that.button("reset");
+                        return ;
+                    }
+                    else{
+                        window.location.href="path.html?names="+name.split("&")[0]+"&"+name.split("&")[1];
+                        that.button("reset");
+                        return ;
+                    }
+                }
+                nodes = [];
+                edges = [];
+                network = [];
+                //$("#resulttitle").html("<a style='color: #ff9966;'>"+name+"</a>"+"的条文信息")
+                var maxnear = $("#ex1").val();
+                maxn = $("#hid").val();
+                if($("#optionsRadios1").is(":checked")){
+                    mr = 1
+                }
+                if($("#optionsRadios2").is(":checked")){
+                    mr = 0
+                }
+                var that = $(this) //
+                if (DEBUG) {
+                    console.log(name, maxn, mr, query_mode)
+                }
+                $.get(BASE_URL + "find_near",{'pname':name,'maxnear':maxn,'mr':mr}, function(return_data){
+                    str = "<h3><span id='resulttitle'></span></h3><table class='table table-striped table-hover table-condensed table-responsive' style='white-space: nowrap; width:100%' id='mytable'><thead><th>节点</th><th>原句</th></thead><tbody>";
+                    ret = return_data["res"]
+                    name = return_data["replace_name"]
+                    same_list = return_data["same_list"]
+
+                    snode = {id:name,label:name,color:{background:"#ff9966"}};
+                    nodes.push(snode);
+
+                    if (same_list.length == 0) {
+                        $("#sameinfo").html("<h3><span>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的同义词信息"+"</span></h3>无相关的同义词信息");
+                    }
+
+                    if(ret.length==0){
+                        //$("#resulttitle").html("搜索结果")
+                        //$("#result").html("");
+                        //$("#resultinfo").html("");
+                        $("#result").html("<h3><span id='resulttitle'>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的条文信息"+"</span></h3>无相关的条文信息");
+                        $("#resultinfo").html("<h3><span>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的图谱知识"+"</span></h3>无相关的图谱知识");
+                        $("#mynetwork").html("无相关的图谱信息");
+                        that.button("reset");
+                        return ;
+                    }
+                    if (name != origin_name) {
+                        alert("【" + origin_name + "】同义于【" + name + "】\n" + "以下显示" + "【" + name + "】的查询结果")
+                        origin_name = name
+                    }
+                    var info_dict = {
+                        "属性": [],
+                        "被属性": [],
+                        "包含": [],
+                        "被包含": [],
+                        "方位": [],
+                        "被方位": [],
+                        "制约": [],
+                        "被制约": [],
+                        "定义": [],
+                        "被定义": [],
+                        "连接": [],
+                        "被连接": []
+                    }
+                    var node_list = []
+                    node_list.push(name)
+                    for(var i in ret){
+                        // if(ret[i]["n.name"] != ret[i]["end.name"] && ret[i]["end.name"] == name) continue;
+                        another_dir = " <-"
+                        all_cnt = ret[i]["all"]
+                        start_node = ret[i]['n.name']
+                        end_node = ret[i]['end.name']
+                        value_list = [ret[i]['r.value']]
+                        rel_group_list = [ret[i]["r.rel_group"]]
+                        rel_seg = []
+                        rel_origin_seg = []
+                        if_then_seg = []
+                        if_then_origin_seg = []
+                        add_info_seg = []
+                        dir_list = [ret[i]["dir"]]
+                        if (all_cnt > 1) {
+                            value_list = ret[i]["r.value"].split("@@@")
+                            rel_group_list = ret[i]["r.rel_group"].split("@@@")
+                            rel_tmp = ret[i]['r.rel'].split("###")
+                            if_then_tmp = ret[i]['r.if_then'].split("###")
+                            rel_1 = rel_tmp.slice(0, value_list[0])
+                            rel_2 = rel_tmp.slice(-value_list[1])
+                            rel_origin_seg = [rel_1, rel_2]
+                            rel_seg = [[...new Set(rel_1)].join(","), [...new Set(rel_2)].join(",")]
+                            if_then_1 = if_then_tmp.slice(0, value_list[0])
+                            if_then_2 = if_then_tmp.slice(-value_list[1])
+                            if_then_origin_seg = [if_then_1, if_then_2]
+                            if_then_seg = [[...new Set(if_then_1)].join(","), [...new Set(if_then_2)].join(",")]
+                            add_info_tmp = ret[i]['r.add_info'].split("###")
+                            add_info_1 = add_info_tmp.slice(0, value_list[0])
+                            add_info_2 = add_info_tmp.slice(-value_list[1])
+                            add_info_origin_seg = [add_info_1, add_info_2]
+                            add_info_seg = [[...new Set(add_info_1)].join(","), [...new Set(add_info_2)].join(",")]
+                            dir_list = ret[i]["dir"].split("@@@")
+                            another_dir = " <->"
+                        }
+                        else {
+                            if (dir_list[0] == "1") {
+                                another_dir = " <-"
+                            }
+                            else {
+                                another_dir = " ->"
+                            }
+                            rel_tmp = ret[i]['r.rel'].split("###")
+                            if_then_tmp = ret[i]['r.if_then'].split("###")
+                            rel_1 = rel_tmp.slice(0, value_list[0])
+                            rel_origin_seg = [rel_1]
+                            rel_seg = [[...new Set(rel_1)].join(",")]
+                            if_then_1 = if_then_tmp.slice(0, value_list[0])
+                            if_then_origin_seg = [if_then_1]
+                            if_then_seg = [[...new Set(if_then_1)].join(",")]
+                            add_info_tmp = ret[i]['r.add_info'].split("###")
+                            add_info_1 = add_info_tmp.slice(0, value_list[0])
+                            add_info_origin_seg = [add_info_1]
+                            add_info_seg = [[...new Set(add_info_1)].join(",")]
+                        }
+                        if (DEBUG) {
+                            console.log(ret[i])
+                        }
+                        for (var j = 0; j < all_cnt; j++) {
+                            edge = {}
+                            have_num = 0
+                            rel_origin_list = rel_origin_seg[j]
+                            if_then_origin_list = if_then_origin_seg[j]
+                            for (var k in rel_origin_list) {
+                                select_flag = false
+                                if (query_mode == "ALL") {
+                                    select_flag = true
+                                }
+                                else {
+                                    if (if_then_origin_list[k] == query_mode) {
+                                        select_flag = true
+                                    }
+                                }
+                                if (!select_flag) {
+                                    continue
+                                }
+                                select_flag = false
+                                if (rel_mode == "ALL") {
+                                    select_flag = true
+                                }
+                                else if (rel_mode == "非属性") {
+                                    if (rel_origin_list[k] != "属性") {
+                                        select_flag = true
+                                    }
+                                }
+                                else {
+                                    if (rel_origin_list[k] == rel_mode) {
+                                        select_flag = true
+                                    }
+                                }
+                                if (!select_flag) {
+                                    continue
+                                }
+                                have_num = have_num + 1
+                            }
+                            if (have_num == 0) {
+                                continue
+                            }
+                            rel_seg_list = rel_seg[j].split(",")
+                            add_info_seg_list = add_info_seg[j].split(",")
+                            for (var k in rel_seg_list) {
+                                select_flag = false
+                                if (rel_mode == "ALL") {
+                                    select_flag = true
+                                }
+                                else if (rel_mode == "非属性") {
+                                    if (rel_seg_list[k] != "属性") {
+                                        select_flag = true
+                                    }
+                                }
+                                else {
+                                    if (rel_seg_list[k] == rel_mode) {
+                                        select_flag = true
+                                    }
+                                }
+                                if (!select_flag) {
+                                    continue
+                                }
+                                if (dir_list[j] == "1") {
+                                    if (rel_seg_list[k] != "方位") {
+                                        info_dict[rel_seg_list[k]].push(end_node)
+                                    }
+                                    else {
+                                        info_dict[rel_seg_list[k]].push(end_node + "(" + add_info_seg_list[k] + ")")
+                                    }
+                                }
+                                else if (dir_list[j] == "2") {
+                                    if (rel_seg_list[k] != "方位") {
+                                        info_dict["被"+rel_seg_list[k]].push(end_node)
+                                    }
+                                    else {
+                                        info_dict["被"+rel_seg_list[k]].push(end_node + "(" + add_info_seg_list[k] + ")")
+                                    }
+                                }
+                            }
+                            if (dir_list[j] == "1") {
+                                edge = {
+                                    id:start_node+"&"+end_node,
+                                    //label: rel_seg[j],
+                                    color:{color:color_list[parseInt(rel_group_list[j])],opacity:1.0},
+                                    from:start_node,
+                                    to:end_node,
+                                    //value:have_num,
+                                    title:rel_seg[j],//have_num,
+                                    rel:ret[i]["r.rel"],
+                                    if_then:ret[i]["r.if_then"],
+                                    content:ret[i]["r.content"],
+                                    item:ret[i]["r.item"],
+                                    spec:ret[i]["r.spec"],
+                                    triple:ret[i]["r.triple"],
+                                    dir:dir_list[j]
+                                }
+                            }
+                            else if (dir_list[j] == "2") {
+                                edge = {
+                                    id:end_node+"&"+start_node,
+                                    //label:rel_seg[j],
+                                    color:{color:color_list[parseInt(rel_group_list[j])],opacity:1.0},
+                                    from:end_node,
+                                    to:start_node,
+                                    //value:have_num,
+                                    title:rel_seg[j],//have_num,
+                                    rel:ret[i]["r.rel"],
+                                    if_then:ret[i]["r.if_then"],
+                                    content:ret[i]["r.content"],
+                                    item:ret[i]["r.item"],
+                                    spec:ret[i]["r.spec"],
+                                    triple:ret[i]["r.triple"],
+                                    dir:dir_list[j]
+                                }
+                            }
+                            if (edge != {}) {
+                                edges.push(edge)
+                            }
+                            if (start_node == end_node) break;
+                        }
+                        if(start_node == name || end_node == name){
+                            another_node = end_node
+                            if (end_node == name) {
+                                another_node = start_node
+                            }
+                            if(!node_list.includes(another_node)) {
+                                nodes.push({id:another_node, label:another_node});
+                                node_list.push(another_node);
+                            }
+                            have_flag = false
+                            rel_list = ret[i]["r.rel"].split("###")
+                            if_then_list = ret[i]["r.if_then"].split("###")
+                            for (var k in rel_list) {
+                                select_flag = false
+                                if (query_mode == "ALL") {
+                                    select_flag = true
+                                }
+                                else {
+                                    if (if_then_list[k] == query_mode) {
+                                        select_flag = true
+                                    }
+                                }
+                                if (!select_flag) {
+                                    continue
+                                }
+                                select_flag = false
+                                if (rel_mode == "ALL") {
+                                    select_flag = true
+                                }
+                                else if (rel_mode == "非属性") {
+                                    if (rel_list[k] != "属性") {
+                                        select_flag = true
+                                    }
+                                }
+                                else {
+                                    if (rel_list[k] == rel_mode) {
+                                        select_flag = true
+                                    }
+                                }
+                                if (!select_flag) {
+                                    continue
+                                }
+                                have_flag = true
+                                break
+                            }
+                            if (!have_flag) {
+                                continue
+                            }
+                            str += "<tr class='mytr'><td class='tname' style='color: #2cad0c;'>"+another_node+another_dir+"</td>"+"<td>"
+                            str += "<table class='table-bordered table-hover table-condensed table-responsive' style='white-space: nowrap; width:100%'>"
+                            content_list = ret[i]["r.content"].split("###")
+                            if_then_list = ret[i]["r.if_then"].split("###")
+                            rel_color_list = ret[i]["r.rel_color"].split("###")
+                            item_list = ret[i]["r.item"].split("###")
+                            spec_list = ret[i]["r.spec"].split("###")
+                            triple_list = ret[i]["r.triple"].split("###")
+                            for(var j in content_list) {
+                                var per_rel = rel_list[j]
+                                var per_if_then = if_then_list[j]
+                                select_flag = false
+                                if (query_mode == "ALL") {
+                                    select_flag = true
+                                }
+                                else {
+                                    if (per_if_then == query_mode) {
+                                        select_flag = true
+                                    }
+                                }
+                                if (!select_flag) {
+                                    continue
+                                }
+                                select_flag = false
+                                if (rel_mode == "ALL") {
+                                    select_flag = true
+                                }
+                                else if (rel_mode == "非属性") {
+                                    if (per_rel != "属性") {
+                                        select_flag = true
+                                    }
+                                }
+                                else {
+                                    if (per_rel == rel_mode) {
+                                        select_flag = true
+                                    }
+                                }
+                                if (!select_flag) {
+                                    continue
+                                }
+                                var per_con = content_list[j]
+                                var per_item = item_list[j]
+                                var per_spec = spec_list[j]
+                                var per_triple = triple_list[j]
+                                var per_triple_list = per_triple.split("->")
+                                var per_n = per_triple_list[0].split("&")[0]
+                                var per_end = per_triple_list[1].split("&")[0]
+                                var n_left = per_item.length + 1 + parseInt(per_triple_list[0].split("&")[1])
+                                var n_right = n_left + per_n.length
+                                var end_left = per_item.length + 1 + parseInt(per_triple_list[1].split("&")[1])
+                                var end_right = end_left + per_end.length
+                                if (n_left < end_left) {
+                                    per_con = per_con.substring(0, end_left) + "<a style='color: #2cad0c;'>"+per_end+"</a>" + per_con.substring(end_right)
+                                    per_con = per_con.substring(0, n_left) + "<a style='color: #ff9966;'>"+per_n+"</a>" + per_con.substring(n_right)
+                                }
+                                else {
+                                    per_con = per_con.substring(0, n_left) + "<a style='color: #ff9966;'>"+per_n+"</a>" + per_con.substring(n_right)
+                                    per_con = per_con.substring(0, end_left) + "<a style='color: #2cad0c;'>"+per_end+"</a>" + per_con.substring(end_right)
+                                }
+                                // per_con = per_con.replace(per_rel, "<a style='color: #2B7CE9;'>"+per_rel+"</a>")
+                                per_rel = per_rel.replace(per_rel, "<a style='color:"+color_list[rel_color_list[j]]+";'>"+per_rel+"</a>")
+                                var if_then_color_id = 0
+                                if (per_if_then == "IF"){
+                                    if_then_color_id = 1
+                                }
+                                else if (per_if_then == "THEN"){
+                                    if_then_color_id = 2
+                                }
+                                per_if_then = per_if_then.replace(per_if_then, "<a style='color:"+if_then_color_list[if_then_color_id]+";'>"+per_if_then+"</a>")
+                                str += "<tr>"+"<td style='color: black;' width='50'>"+per_spec + " " + per_item+"</td>"+"<td width='50'>"+per_rel+/*", "+per_if_then+*/"</td>"+"</td><td>"+"<span>"+per_con+"</span>"+"</td></tr>"
+                            }
+                            str += "</table></td></tr>"
+                        }
+                    }
+                    str += "</tbody></table>"
+                    draw();
+                    that.button("reset");
+                    $("#result").html(str);
+                    $("#resulttitle").html("<a style='color: #ff9966;'>"+name+"</a>"+"的条文信息")
+                    info_str = "<h3><span>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的图谱知识"+"</span></h3>"
+                    if (DEBUG) {
+                        console.log(info_dict)
+                    }
+                    for (var rk in info_dict) {
+                        info_rk_list = info_dict[rk]
+                        if (info_rk_list.length == 0){
+                            continue
+                        }
+                        temp_str = "<hr style='margin:5px 0px;height:1px;border:none;background-color:#CCCCCC;'/><span>"
+                        if (rk.substr(0, 1) == "被") {
+                            temp_rel = rk.substr(1)
+                            temp_str += [...new Set(info_rk_list)].join(", ")
+                            temp_str += " " + "<a style='color: "+rel_map[temp_rel]+"';'>"+temp_rel+"</a>" + " "
+                            temp_str += "<a style='color: #ff9966;'>"+name+"</a>"
+                        }
+                        else {
+                            temp_rel = rk
+                            temp_str += "<a style='color: #ff9966;'>"+name+"</a>"
+                            temp_str += " " + "<a style='color: "+rel_map[temp_rel]+"';'>"+temp_rel+"</a>" + " "
+                            temp_str += [...new Set(info_rk_list)].join(", ")
+                        }
+                        temp_str += "</span>"
+                        info_str += temp_str
+                    }
+                    $("#resultinfo").html(info_str);
+                    
+                    if (same_list.length == 0) {
+                        $("#sameinfo").html("<h3><span>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的同义词信息"+"</span></h3>无相关的同义词信息");
+                    }
+                    else {
+                        sameinfo_str = "<h3><span>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的同义词信息"+"</span></h3>"
+                        sameinfo_str += "<hr style='margin:5px 0px;height:1px;border:none;background-color:#CCCCCC;'/><span>"
+                        sameinfo_str += "<span>" + [...new Set(same_list)].join(", ") + "</span>"
+                        $("#sameinfo").html(sameinfo_str);
+                    }
+                    var table = 
+                    $('#mytable').DataTable({
+                        "scrollX": true,
+                        "autoWidth": true,
+                        'sScrollY': 'calc(100vh - 332px)',
+                        "paging": true,
+                        "iDisplayLength":20, //默认每页数量
+                        "bPaginate": true, //翻页功能
+                        "bLengthChange": false, //改变每页显示数据数量
+                        "bFilter": false, //过滤功能
+                        "bInfo": true, //页脚信息
+                        "bAutoWidth": true, //自动宽度
+                        "bRetrieve": true,
+                        "processing": true,
+                        //"ordering": false,
+                        "bSort": false,
+                         language: {
+                              "sProcessing": "处理中...",
+                              "sLengthMenu": "显示 _MENU_ 项结果",
+                              "sZeroRecords": "没有匹配结果",
+                              "sInfo": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+                              "sInfoEmpty": "显示第 0 至 0 项结果，共 0 项",
+                              "sInfoFiltered": "(由 _MAX_ 项结果过滤)",
+                              "sInfoPostFix": "",
+                              "sSearch": "搜索:",
+                              "sUrl": "",
+                              "sEmptyTable": "表中数据为空",
+                              "sLoadingRecords": "载入中...",
+                              "sInfoThousands": ",",
+                              "oPaginate": {
+                                  "sFirst": "首页",
+                                  "sPrevious": "上页",
+                                  "sNext": "下页",
+                                  "sLast": "末页"
+                              },
+                              "oAria": {
+                                  "sSortAscending": ": 以升序排列此列",
+                                  "sSortDescending": ": 以降序排列此列"
+                              }
+                          },
+                        //"serverSide" : true,//服务器端进行分页处理的意思
+                        //"bPaginate": true,
+                        //"bProcessing": true
+                        columns : [{data : "id"},{data:"content"}],
+                    });
+                    $("#mytable tbody").on("mouseover","tr .tname",function()
+                    {//给tr或者td添加click事件
+                        var data=table.row(this).data();//获取值的对象数据
+                        //console.log(data);//某一行中要是用的表头值
+                        //draw();
+                        //console.log("draw");
+
+                        //console.log(nodes);
+                        var nodeID = data['id'].split(" ")[0];
+                        var clickNode = nodeset.get(nodeID);
+                        // console.log(clickNode);
+                        clickNode.color = {
+                            border: '#2cad0c',
+                            background: '#7bd655',
+                            highlight: {
+                                border: '#2cad0c',
+                                background: '#7bd655'
+                            }
+                        }
+                        nodeset.update(clickNode);
+                    });
+                    $("#mytable tbody").on("mouseout","tr .tname",function()
+                    {//给tr或者td添加click事件
+                        //console.log("mouseout!");
+                        var data=table.row(this).data();//获取值的对象数据
+                        var nodeID = data['id'].split(" ")[0];
+                        var clickNode = nodeset.get(nodeID);
+                        clickNode.color = {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF',
+                            highlight: {
+                                border: '#2cad0c',
+                                background: '#7bd655'
+                            }
+                        }
+                        nodeset.update(clickNode); 
+
+                    });
+                    $("#mytable tbody").on("click","tr .tname",function()
+                    {//给tr或者td添加click事件
+                        //console.log("click!");
+                        var data=table.row(this).data();//获取值的对象数据
+                        var nodeID = data['id'].split(" ")[0];
+                        if (DEBUG) {
+                            console.log(nodeID);
+                        }
+                        location.href="near.html?name="+nodeID;
+                        //$("#pnme").val(nodeID);
+                        //$("#btn-commit").trigger("click");
+                    });
+                });
+
+                // 添加图
+                $.get(BASE_URL + "find_pic", {'name':name}, function(return_data){
+                    ret = return_data["res"]
+                    name = return_data["replace_name"]
+                    $("#canvastitle").html("<h3><span>"+"<a style='color: #ff9966;'>"+name+"</a>"+"的图纸信息"+"</span></h3>")
+                    if(ret.length==0){
+                        $("#canvasinfo").html("无相关的图纸信息");
+                        return;
+                    }
+                    if (name != origin_name) {
+                        alert("【" + origin_name + "】同义于【" + name + "】\n" + "以下显示" + "【" + name + "】的查询结果")
+                        origin_name = name
+                    }
+                    pic_num = ret["pic"].length
+                    canvasinfo_str = ""
+                    for (var i = 0; i < pic_num; i++) {
+                        canvasinfo_str += "<canvas id='canvasId" + i.toString() +"' style='margin:5px 0px 0px -5px'></canvas>"
+                    }
+                    $("#canvasinfo").html(canvasinfo_str)
+                    for (var i = 0; i < pic_num; i++) {
+                        pic_name = ret["pic"][i]
+                        pos_coord = ret["pos"][i]
+                        is_title = ret["title"][i]
+                        loadImg("canvasId" + i.toString(), pic_name, is_title, pos_coord, name)
+                    }
+                });
+            });
+            
+            
+            if(window.location.href.split("=").length>1){
+                if (DEBUG) {
+                    console.log(window.location.href)
+                }
+                id = window.location.href.split("=")[1];
+                id = decodeURI(id);
+                $("#pname").val(id);
+                $('#btn-commit').trigger("click");
+            }
+            else{
+                //$("#pname").val("");
+                //$('#btn-commit').trigger("click");
+            }
+        });
+        function draw() 
+        {
+            if (DEBUG) {
+                console.log("draw")
+            }
+            var container = document.getElementById('mynetwork');
+            nodeset = new vis.DataSet(nodes)
+            var data = {
+                nodes: nodeset,
+                edges: edges
+            };
+            var options = {
+                nodes: {
+                    // shape: 'dot',
+                    scaling:{
+                        label: {
+                            min:8,
+                            max:20
+                        }
+                    },
+                    color:{
+                        highlight: {//节点选中时状态颜色
+                            background: '#ec7171',
+                            border: '#f90909'
+                        },
+                    },
+                },
+                layout:{
+                    randomSeed:1,//配置每次生成的节点位置都一样，参数为数字1、2等
+                },
+                /*
+                physics: {
+                    enabled: true,
+                    barnesHut: {
+                        gravitationalConstant: -4000,
+                        centralGravity: 0.3,
+                        springLength: 120,
+                        springConstant: 0.04,
+                        damping: 0.09,
+                        avoidOverlap: 0
+                    }
+                }*/
+                physics: {
+                    barnesHut: {
+                    damping: 0.5,
+                    },
+                    stabilization:{
+                    },
+                    minVelocity: 0.75
+                },
+                edges: {//关系线控制
+                    smooth: true,//是否显示方向箭头
+                    arrows: {
+                        to: true,
+                        //from: true
+                    },
+                    font: {
+                        size: 15,
+                    },
+                    scaling:{
+                        label: {
+                            enabled: false,
+                            min: 15,
+                            max: 30,
+                        }
+                    }
+                }
+            };
+            network = new vis.Network(container, data, options);
+
+            network.on("doubleClick", function(params) {//双击事件
+                if (params.nodes.length != 0) {//确定为节点双击事件
+                    if (DEBUG) {
+                        console.log(params.nodes[0])
+                    }
+                    var click_node_id = params.nodes[0];
+                    maxn = $("#hid").val();
+                    //var mr = 1;
+                    //remove_all_sub_nodes(click_node_id);
+                    //console.log(click_node_id);
+                    //$("#pname").val(click_node_id);
+                    // $("#btn-commit").trigger("click");
+                    $.get(BASE_URL + "find_near",{'pname':click_node_id,'maxnear':maxn,'mr':mr}, function(return_data){
+                    ret = return_data["res"]
+                    if (DEBUG) {
+                        console.log(ret);
+                    }
+                    for(var i in ret){
+                        exist1 = 0
+                        for(var j in nodes){
+                            if(ret[i]['n.name'] == nodes[j]['id']){
+                                exist1 = 1;break;
+                            }
+                        }
+                        exist2 = 0;
+                        for(var j in nodes){
+                            if(ret[i]['end.name'] == nodes[j]['id']){
+                                exist2 = 1;break;
+                            }
+                        }
+                        if(!exist1){
+                            nodes.push({id:ret[i]['n.name'],label:ret[i]["n.name"]})
+                            //edges.push({from:ret[i]['n.name'],to:ret[i]['end.name'],value:ret[i]['r.value'],title:ret[i]['r.value']})
+                        }
+                        if(!exist2){
+                            nodes.push({id:ret[i]['end.name'],label:ret[i]["end.name"]})
+                        }
+
+                        all_cnt = ret[i]["all"]
+                        start_node = ret[i]['n.name']
+                        end_node = ret[i]['end.name']
+                        value_list = [ret[i]['r.value']]
+                        rel_group_list = [ret[i]['r.rel_group']]
+                        rel_seg = []
+                        rel_origin_seg = []
+                        if_then_seg = []
+                        if_then_origin_seg = []
+                        dir_list = [ret[i]["dir"]]
+                        if (all_cnt > 1) {
+                            value_list = ret[i]["r.value"].split("@@@")
+                            rel_group_list = ret[i]['r.rel_group'].split("@@@")
+                            rel_tmp = ret[i]['r.rel'].split("###")
+                            rel_1 = rel_tmp.slice(0, value_list[0])
+                            rel_2 = rel_tmp.slice(-value_list[1])
+                            rel_origin_seg = [rel_1, rel_2]
+                            rel_seg = [[...new Set(rel_1)].join(","), [...new Set(rel_2)].join(",")]
+                            if_then_1 = if_then_tmp.slice(0, value_list[0])
+                            if_then_2 = if_then_tmp.slice(-value_list[1])
+                            if_then_origin_seg = [if_then_1, if_then_2]
+                            if_then_seg = [[...new Set(if_then_1)].join(","), [...new Set(if_then_2)].join(",")]
+                            dir_list = ret[i]["dir"].split("@@@")
+                        }
+                        else {
+                            rel_tmp = ret[i]['r.rel'].split("###")
+                            if_then_tmp = ret[i]['r.if_then'].split("###")
+                            rel_1 = rel_tmp.slice(0, value_list[0])
+                            rel_origin_seg = [rel_1]
+                            rel_seg = [[...new Set(rel_1)].join(",")]
+                            if_then_1 = if_then_tmp.slice(0, value_list[0])
+                            if_then_origin_seg = [if_then_1]
+                            if_then_seg = [[...new Set(if_then_1)].join(",")]
+                        }
+                        for (var j = 0; j < all_cnt; j++) {
+                            if (dir_list[j] == "1") {
+                                start_node = ret[i]['n.name']
+                                end_node = ret[i]['end.name']
+                            }
+                            else if (dir_list[j] == "2") {
+                                start_node = ret[i]['end.name']
+                                end_node = ret[i]['n.name']
+                            }
+                            edge_id = start_node+"&"+end_node
+                            exist3 = 0;
+                            for(var k in edges){
+                                if(edges[k]['id'] == edge_id){
+                                    exist3 = 1;break;
+                                }
+                            }
+                            if(!exist3){
+                                have_num = 0
+                                rel_origin_list = rel_origin_seg[j]
+                                if_then_origin_list = if_then_origin_seg[j]
+                                for (var k in rel_origin_list) {
+                                    select_flag = false
+                                    if (query_mode == "ALL") {
+                                        select_flag = true
+                                    }
+                                    else {
+                                        if (if_then_origin_list[k] == query_mode) {
+                                            select_flag = true
+                                        }
+                                    }
+                                    if (!select_flag) {
+                                        continue
+                                    }
+                                    select_flag = false
+                                    if (rel_mode == "ALL") {
+                                        select_flag = true
+                                    }
+                                    else if (rel_mode == "非属性") {
+                                        if (rel_origin_list[k] != "属性") {
+                                            select_flag = true
+                                        }
+                                    }
+                                    else {
+                                        if (rel_origin_list[k] == rel_mode) {
+                                            select_flag = true
+                                        }
+                                    }
+                                    if (!select_flag) {
+                                        continue
+                                    }
+                                    have_num = have_num + 1
+                                }
+                                if (have_num == 0) {
+                                    continue
+                                }
+                                edges.push({
+                                    id:edge_id,
+                                    //label:rel_seg[j],
+                                    color:{color:color_list[parseInt(rel_group_list[j])],opacity:1.0},
+                                    from:start_node,
+                                    to:end_node,
+                                    //value:have_num,
+                                    title:rel_seg[j],//have_num,
+                                    rel:ret[i]["r.rel"],
+                                    if_then:ret[i]["r.if_then"],
+                                    content:ret[i]["r.content"],
+                                    item:ret[i]["r.item"],
+                                    spec:ret[i]["r.spec"],
+                                    triple:ret[i]["r.triple"],
+                                    dir:dir_list[j]
+                                })
+                            }
+                        }
+                    }
+                    if (DEBUG) {
+                        console.log(edges)
+                    }
+                    draw();
+                })
+
+                }
+                else if(params.edges.length != 0){
+                    var click_edge_id = params.edges[0];
+                    if (DEBUG) {
+                        console.log(click_edge_id);
+                    }
+                    edge2names = click_edge_id.split("&");
+                    //window.open("http://playbigdata.com/fss3/search2.aspx?q="+encodeURIComponent(edge2names[0])+"+"+encodeURIComponent(edge2names[1])+"&t=")
+
+                    $.get(BASE_URL + "getEdgeinfo",{sname:edge2names[0],tname:edge2names[1]},function(data){
+                        $('.popover-content').html("");
+                        if (DEBUG) {
+                            console.log(data);
+                        }
+                        $('.popover').show();
+                        var x = params.pointer.DOM.x;
+                        var y = params.pointer.DOM.y;
+                        $('.popover-title').html(edge2names[0]+"与"+edge2names[1]);
+
+                        if(data.length==0){
+                             $('.popover-content').html("未查询到相关信息");
+                            $('.popover').css('left', (x + 10) + 'px');
+                            $('.popover').css('top', (y - 20) + 'px');
+                            return ;
+                        }
+                        var str = ""
+                        /*
+                        for(var iter=0;iter<data.length;iter++){
+                            str+= "新闻"+(iter+1)+"：</br>";
+                            str+= "  时间："+data[iter]['TimeStr']+"</br>";
+                            str+="内容："+data[iter]['Text']+"</br>"+"-------------------</br>"
+                        }*/
+
+                        $('.popover-content').html(str);
+                        $('.popover').css('left', (x + 10) + 'px');
+                        $('.popover').css('top', (y - 20) + 'px');
+                    })
+                }
+             });
+
+        }
+
+    </script>
+</body>
+</html>

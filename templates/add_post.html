@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>人工操作</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+        html, body {
+          font: 10pt arial;
+        }
+        #mynetwork {
+          width: 600px;
+          height: 615px;
+          margin-top: 28px;
+          border: 1px solid lightgray;
+        }
+        #mytable td{
+            padding:10px 10px
+        }
+        #mytable tbody tr .tname:hover  {
+        background-color: #0180FE;
+        color: #fff;
+        cursor:pointer;
+        }
+        .dataTable tr:hover td {background:none;}
+        em{
+            color:red;
+        }
+    </style>
+    <script type="text/javascript" src="static/js/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="static/dist/vis.js"></script>
+    <script type="text/javascript" src="static/bootstrap-3.3.7-dist/js/bootstrap.js"></script>
+    <script type="text/javascript" src="static/js/bootstrap-slider.js"></script>
+    <script type="text/javascript" src="static/js/jquery.dataTables.min.js"></script>
+    <link  href="static/dist/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <link  href="static/bootstrap-3.3.7-dist/css/bootstrap.css" rel="stylesheet">
+    <link  href="static/bootstrap-3.3.7-dist/css/bootstrap-theme.css" rel="stylesheet">
+    <link  href="static/css/slider.css" rel="stylesheet">
+    <link  href="static/css/jquery.dataTables.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="row" style="">
+		<div class="span6">
+			<ul class="nav nav-tabs" style="margin-left:1%;">
+				<li><a href="graph.html">规范文本</a> </li>
+				<li><a href="search_spec.html">关键词匹配</a> </li>
+				<li><a href="near.html">知识查询</a> </li>
+                <li><a href="path.html">关系查询</a></li>
+                <li class="active"><a href="add_post.html">人工操作</a></li>
+			</ul>
+		</div>
+	</div>
+    <hr>
+    <div id="main-container" class="container" style="margin-left: 1px;padding-left:1px;width:100%;">
+        <div class="col-sm-offset-2 col-sm-2">
+            <button class="btn btn-default" data-toggle="modal" data-target="#myModal" id="btn-add">添加词典</button>
+            <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <!--<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>-->
+                            <h4 class="modal-title" id="myModalLabel">添加词典</h4>
+                        </div>
+                        <div class="modal-body">
+                            <form action="/add_word_ops" method="get">
+                                <div class="row">
+                                    <div class="col-lg-6 col-sm-6">
+                                        <label for="add_word" class="control-label">词汇</label>
+                                        <input type="text" class="form-control" name="add_word" id="add_word" placeholder="请输入要添加的词汇（多词以,分隔）">
+                                    </div>
+                                    <div class="col-lg-6 col-sm-6">
+                                        <label for="add_word" class="control-label">类型</label>
+                                        <input type="text" class="form-control" name="add_type" id="add_type" placeholder="请输入词汇对应的类型（多词以,分隔）">
+                                    </div>
+                                </div>
+                            </form>
+                            <hr align="left" size="10" />
+                            <label for="deal_prog" class="control-label" id="prog_label">处理进度</label>
+                            <div id="prog_out" class="progress progress-striped active">
+                                <div id="prog_in" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <input type="button" class="btn btn-default" style="margin-left:5px" name="Close" value="关闭" id='btn-close' />
+                            <input type="button" class="btn btn-primary" style="margin-left:5px" name="Submit" value="提交" id='btn-submit' />
+                            <!--<button type="button" class="btn btn-default" data-dismiss="modal" id="btn-close">关闭</button>
+                            <button type="button" class="btn btn-primary" id="btn-submit">提交</button>-->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var BASE_URL = "http://127.0.0.1:8010/";
+        var DEBUG = true;
+        var monProg = null;
+        $('document').bind('keypress', function(e){
+            if(e.keyCode == "13"){
+                $("#btn-submit").trigger("click");
+            }
+        });
+        $('body').on('click', function(e) {
+            var target = $(event.target); // One jQuery object instead of 3
+            // Compare length with an integer rather than with
+            if (!target.hasClass('popover') 
+                && target.parent('.popover-content').length === 0
+                && target.parent('.myPopover').length === 0
+                && target.parent('.popover-title').length === 0
+                && target.parent('.popover').length === 0 && target.attr("id") !== "folder") {
+                if (DEBUG) {
+                    console.log("a");
+                }
+                $('#mypopever').hide();
+            }
+        });
+        $(document).ready(function(){
+            /*
+            $('#myModal').on('hide.bs.modal', function() { 
+                $("#add_word").val("");
+            });*/
+            $("#btn-add").click(function(){
+                event_end();
+                $("#add_word").val("");
+                $("#add_type").val("");
+                $('#prog_label').text("处理进度");
+                $('#prog_in').width(0);
+                $('#prog_out').attr("class", "progress progress-striped active");
+            });
+            $("#btn-close").click(function(){
+                event_end();
+                $("#add_word").val("");
+                $("#add_type").val("");
+                $('#prog_label').text("处理进度");
+                $('#prog_in').width(0);
+                $('#prog_out').attr("class", "progress progress-striped active");
+                $("#myModal").modal('hide');
+            });
+            $("#btn-submit").click(function(){
+                var add_word = $("#add_word").val();
+                var add_type = $("#add_type").val();
+                if (DEBUG) {
+                    console.log(add_word)
+                    console.log(add_type)
+                }
+                if (add_word == "" || add_type == "") {
+                    return;
+                }
+                event_start();
+
+                monProg = setInterval(function() {
+                    $.get(BASE_URL + "deal_process", function(ret){
+                        prog_status = ret["prog_status"]
+                        total_time = ret["total_time"]
+                        time_diff = ret["time_diff"]
+                        prog_cnt = ret["prog_cnt"]
+                        total_cnt = ret["total_cnt"]
+                        // 改变进度条进度
+                        $('#prog_label').text("处理进度（" + prog_status + "）");
+                        $('#prog_in').width(time_diff * 100 / total_time + '%');
+                        if (prog_cnt == total_cnt) {
+                            if (DEBUG) {
+                                console.log("添加完成")
+                            }
+                            event_end();
+                            // 修改进度条外层div的class, 改为完成形态
+                            $('#prog_out').attr("class", "progress progress-bar-success");
+                            $("#myModal").modal('hide');
+                        }
+                    });
+                }, 5000);
+
+                $.get(BASE_URL + "add_word_ops", {'add_word':add_word, 'add_type':add_type}, function(ret) {
+                    if (DEBUG) {
+                        console.log(ret)
+                    }
+                });
+            });
+        });
+        function event_start() {
+            if(monProg != null){
+                clearInterval(monProg);
+                monProg = null;
+            }
+            $("#add_word").addClass('disabled');
+            $("#add_word").prop('disabled', true);
+            $("#btn-close").addClass('disabled');
+            $("#btn-close").prop('disabled', true);
+            $("#btn-submit").addClass('disabled');
+            $("#btn-submit").prop('disabled', true);
+        };
+        function event_end() {
+            // 此时请求成功返回结果了，结束对后台进度的查询
+            if (monProg != null) {
+                clearInterval(monProg);
+                monProg = null;
+            }
+            $("#add_word").removeClass('disabled');
+            $("#add_word").prop('disabled', false);
+            $("#btn-close").removeClass('disabled');
+            $("#btn-close").prop('disabled', false);
+            $("#btn-submit").removeClass('disabled');
+            $("#btn-submit").prop('disabled', false);
+        };
+    </script>
+</body>
+</html>

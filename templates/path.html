@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html>
+<head>
+        <title>关系搜索</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style type="text/css">
+            html, body {
+                font: 10pt arial;
+            }
+            #mynetwork {
+                width: 600px;
+                height: 600px;
+                border: 1px solid lightgray;
+            }
+            #path-network {
+                width: 600px;
+                height: 200px;
+                border: 1px solid lightgray;
+            }
+            #mytable td{
+                padding:10px 18px
+            }
+            #mytable tbody tr:hover {
+                background-color: #0180FE;
+                color: #fff;
+                cursor:pointer;
+            }
+            em{
+                color:red;
+            }
+        </style>
+        <script type="text/javascript" src="static/js/jquery-3.2.1.min.js"></script>
+        <script type="text/javascript" src="static/dist/vis.js"></script>
+        <script type="text/javascript" src="static/bootstrap-3.3.7-dist/js/bootstrap.js"></script>
+        <script type="text/javascript" src="static/js/bootstrap-slider.js"></script>
+        <script type="text/javascript" src="static/js/jquery.dataTables.min.js"></script>
+        <link  href="static/dist/vis-network.min.css" rel="stylesheet" type="text/css" />
+        <link  href="static/bootstrap-3.3.7-dist/css/bootstrap.css" rel="stylesheet">
+        <link  href="static/bootstrap-3.3.7-dist/css/bootstrap-theme.css" rel="stylesheet">
+        <link  href="static/css/slider.css" rel="stylesheet">
+        <link  href="static/css/jquery.dataTables.min.css" rel="stylesheet">
+</head>
+
+<body onload="draw()">
+    <div class="row" style="">
+		<div class="span6">
+			<ul class="nav nav-tabs" style="margin-left:1%;">
+				<li><a href="graph.html">规范文本</a> </li>
+				<!--<li><a href="search_spec.html">关键词匹配</a> </li>-->
+				<li><a href="near.html">知识查询</a> </li>
+				<li class="active"><a href="path.html">路径查询</a></li>
+                <!--<li><a href="add_post.html">人工操作</a></li>-->
+			</ul>
+		</div>
+	</div>
+    <hr>
+    <div id="main-container" class="container" style="margin-left: 0;margin-top:0;padding-left:0;width:100%;">
+        <div class="row">
+            <div class="col-md-8 col-sm-12 col-xs-12">
+                <div class="panel panel-default">
+                        <div class="panel-heading">
+                        <form action="/find_path" method="get"><br>
+                            <div class="row">
+                                <div class="col-lg-2 col-sm-3">
+                                    <input type="text" class="form-control" name="htitle" id="fname" name="p" placeholder="节点1">
+                                    <div class="errormessage"></div>
+                                </div>
+                                <div class="col-lg-2 col-sm-3">
+                                    <input type="text" class="form-control" name="htitle" id="tname" name="p" placeholder="节点2">
+                                    <div class="errormessage"></div>
+                                </div>
+                                <div class="col-lg-2 col-sm-3">
+                                    <input type="button" class="btn btn-default" style="" name="Submit" value="查询" id='btn-commit' />
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="panel-body">
+                        <div id="mynetwork" style="width:100%;">
+
+                        </div>
+                        <div class="popover right" role="tooltip" style="max-width:50%" id="mypopever1">
+                                <div class="arrow" style="top: 30px" id="arrow1"></div>
+                                <div class="popover-inner"  id="pinner1">
+                                    <div class="popover-title" id="ptitle1">My Title</div>
+                                    <div class="popover-content" id="pcontent1"></div>
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-12 col-xs-12" >
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <a class="btn btn-success"></a>
+                    </div>
+                    <div class="panel-body" style="" id="resultbody">
+                        <div id="result">
+                            <h3><span id="resulttitle">搜索结果</span></h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12 col-sm-12 col-xs-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading"></div>
+                    <div class="panel-body">
+                        <div id="path-network" style="width:100%"></div>
+                        <div class="popover right" role="tooltip" style="max-width:50%" id="mypopever2">
+                                <div class="arrow" style="top: 30px" id="arrow2"></div>
+                                <div class="popover-inner" id="pinner2">
+                                    <div class="popover-title" id="ptitle2">My Title</div>
+                                    <div class="popover-content" id="pcontent2"></div>
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        /* initial a slider */
+        var mySlider = $("input.slider").slider();
+        var value = mySlider.slider('getValue');
+        mySlider
+            .slider('setValue', 5)
+            .slider('setValue', 7);
+        $('#ex1').slider({
+	        formatter: function(value) {
+		    return 'Current value: ' + value;
+	        }
+        });
+        var BASE_URL = "http://127.0.0.1:8010/";
+        var DEBUG = true;
+        var nodes = [];
+        var edgeset;
+        var edges = [];
+        var network = null;
+        var tinynodes = [];
+        var tinyedgeset= [];
+        var tinyedges = [];
+        var tinynetwork = null;
+        var color_list = ['#000000', '#8B0000', '#8CE600', '#FFCC00', '#FF4D00', '#F28500', '#89CFF0', '#20B2AA', '#003399', '#800080']
+        var rel_map = ["未包含", "连接", "包含", "属性", "定义", "制约", "方位", "状态"]
+        /*
+        $(window).resize(function() {
+            network.fit();
+            tinynetwork.fit();
+        });*/
+        $(document).bind('keypress',function(e){
+            if(e.keyCode==13){
+                $("#btn-commit").trigger("click");
+            }
+        })
+        $('body').on('click', function(event) {
+            var target = $(event.target); // One jQuery object instead of 3
+
+            // Compare length with an integer rather than with
+            if (!target.hasClass('popover')
+                && target.parent('.popover-content').length === 0
+                && target.parent('#mypopever1').length === 0
+                && target.parent('#mypopever2').length === 0
+                && target.parent('.popover-title').length === 0
+                && target.parent('.popover').length === 0 && target.attr("id") !== "folder") {
+                    if (DEBUG) {
+                        console.log("a");
+                    }
+                    $('#mypopever').hide();
+                    $('#mypopever2').hide();
+                }
+        });
+        $(document).ready(function(){
+
+            $("#btn-commit").click(function(){
+                $(this).button("loading");
+                var lohtml = "<div class='progress progress-striped active' style='margin-top:40%'><div class='progress-bar progress-bar-success' role='progressbar'aria-valuenow='60' aria-valuemin='0' aria-valuemax='100'style='width: 40%;'> <span class='sr-only'>40% 完成</span> </div> <div>"
+                //lohtml = "html";
+                $("#mynetwork").html(lohtml);
+                nodes = [];
+                edges = [];
+                network = [];
+                var t_paths;
+                var fname = $("#fname").val();
+                var tname = $("#tname").val();
+                var origin_fname = fname
+                var origin_tname = tname
+                if(fname==""&&tname!=""){
+                    location.href="near.html?name="+tname;
+                    that.button("reset");
+                    return ;
+                }
+                else if(fname!=""&&tname==""){
+                    location.href="near.html?name="+fname;
+                    that.button("reset");
+                    return ;
+                }
+                else if(fname==""&&tname==""){
+                    alert("请分别输入两个节点");
+                    $("#resulttitle").html("搜索结果")
+                    $("#result").html("");
+                    $("#mynetwork").html("");
+                    that.button("reset");
+                    return ;
+                }
+                // $("#resulttitle").html("<a>"+fname+"</a>"+"到"+"<a>"+tname+"</a>"+"的路径查询")
+                var that = $(this);
+                $.get(BASE_URL + "find_path",{'fname':fname,'tname':tname}, function(return_data){
+                    ret = return_data["res"]
+                    fname = return_data["replace_fname"]
+                    tname = return_data["replace_tname"]
+
+                    if (ret.length == 0) {
+                        alert("未找到相关路径");
+                        $("#resulttitle").html("搜索结果")
+                        $("#result").html("");
+                        $("#mynetwork").html("");
+                        that.button("reset");
+                        return ;
+                    }
+
+                    if (fname != origin_fname && tname != origin_tname) {
+                        alert("【" + origin_fname + "】同义于【" + fname + "】\n【" + origin_tname + "】同义于【" + tname + "】\n" + "以下显示从" + "【" + fname + "】到【" + tname + "】的查询结果")
+                    }
+                    else if (fname != origin_fname) {
+                        alert("【" + origin_fname + "】同义于【" + fname + "】\n" + "以下显示从" + "【" + fname + "】到【" + tname + "】的查询结果")
+                    }
+                    else if (tname != origin_tname) {
+                        alert("【" + origin_tname + "】同义于【" + tname + "】\n" + "以下显示从" + "【" + fname + "】到【" + tname + "】的查询结果")
+                    }
+
+                    if (DEBUG) {
+                        console.log(ret);
+                    }
+                    str = "<h3><span id='resulttitle'></span></h3><table class='table table-striped' style='width:100%' id='mytable'><thead><th>路径</th><th>pid</th></thead><tbody>";
+                    t_nodes = ret[0];
+                    t_rels = ret[1];
+                    t_paths = ret[2];
+                    //$("#resulttitle").html("in")
+                    if(t_paths.length==0){
+                        alert("未找到相关路径");
+                        $("#resulttitle").html("搜索结果")
+                        $("#result").html("");
+                        $("#mynetwork").html("");
+                        that.button("reset");
+                        return ;
+                    }
+                    for(var i in t_nodes){
+                        if(fname == t_nodes[i]){
+                            nodes.push({id:t_nodes[i],label:t_nodes[i],color:{background:"#ff9966"}})
+                        }
+                        else if(tname == t_nodes[i]){
+                            nodes.push({id:t_nodes[i],label:t_nodes[i],color:{background:"#33cc66"}})
+                        }
+                        else{
+                            nodes.push({id:t_nodes[i],label:t_nodes[i]})
+                        }
+                    }
+                    for(var i in t_paths){
+                        path = ""
+                        for(var j in t_paths[i]['path']){
+                            id1 = t_paths[i]['path'][j]['start_node']+"&"+t_paths[i]['path'][j]['end_node']
+                            id2 = t_paths[i]['path'][j]['end_node']+"&"+t_paths[i]['path'][j]['start_node']
+                            rel_tmp = t_paths[i]['path'][j]['rel'].split("###")
+                            if_then_tmp = t_paths[i]['path'][j]['if_then'].split("###")
+                            add_info_tmp = t_paths[i]['path'][j]['add_info'].split("###")
+                            final_rel = [...new Set(rel_tmp)].join(",")
+                            rel_color_list = t_paths[i]['path'][j]["rel_color"].split("###")
+                            for (var k in rel_tmp) {
+                                rel_add_info = ""
+                                if (rel_tmp[k] == "方位") {
+                                    rel_add_info = "(" + add_info_tmp[k] + ")"
+                                }
+                                rel_tmp[k] = rel_tmp[k].replace(rel_tmp[k], "<a style='color:"+color_list[rel_color_list[k]]+";'>"+rel_tmp[k]+rel_add_info+"</a>")
+                            }
+                            rel = [...new Set(rel_tmp)].join(",")
+                            if_then = [...new Set(if_then_tmp)].join(",")
+                            exist = 0;
+                            for(var k in edges){
+                                if(edges[k]['id'] == id1 || edges[k]['id'] == id2){
+                                    exist = 1;break;
+                                }
+                            }
+                            if(!exist) {
+                                edge = {
+                                    id:t_paths[i]['path'][j]['start_node']+"&"+t_paths[i]['path'][j]['end_node'],
+                                    label:final_rel,
+                                    color:{color:color_list[t_paths[i]['path'][j]['rel_group']],opacity:1.0},
+                                    rel_group:t_paths[i]['path'][j]['rel_group'],
+                                    from:t_paths[i]['path'][j]['start_node'],
+                                    to:t_paths[i]['path'][j]['end_node'],
+                                    // value:t_paths[i]['path'][j]['val'],
+                                    title:t_paths[i]['path'][j]['val'],
+                                    pid:i
+                                }
+                                edges.push(edge)
+                            }
+                            path += t_paths[i]['path'][j]['start_node'] + '--' + "<span>" + rel + "</span>" + '--'
+                            if (DEBUG) {
+                                console.log(path)
+                            }
+                        }
+                        path += tname
+                        str += "<tr pid="+i+"><td>"+path+"</td><td>"+i+"</td></tr>"
+                    }
+                    str+='</tbody></table>'
+                    $("#result").html(str);
+                    $("#resulttitle").html("<a>"+fname+"</a>"+"到"+"<a>"+tname+"</a>"+"的路径查询")
+                    var table=
+                    $('#mytable').DataTable({
+                        "paging": true,
+                        "iDisplayLength": 12, //默认每页数量
+                        "bPaginate": true, //翻页功能
+                        "bLengthChange": false, //改变每页显示数据数量
+                        "bFilter": false, //过滤功能
+                        "bInfo": true, //页脚信息
+                        "bAutoWidth": true, //自动宽度
+                        "bRetrieve": true,
+                        "processing": true,
+                        "ordering": false,
+                        "bSort": false,
+                        language: {
+                            "sProcessing": "处理中...",
+                              "sLengthMenu": "显示 _MENU_ 项结果",
+                              "sZeroRecords": "没有匹配结果",
+                              "sInfo": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+                              "sInfoEmpty": "显示第 0 至 0 项结果，共 0 项",
+                              "sInfoFiltered": "(由 _MAX_ 项结果过滤)",
+                              "sInfoPostFix": "",
+                              "sSearch": "搜索:",
+                              "sUrl": "",
+                              "sEmptyTable": "表中数据为空",
+                              "sLoadingRecords": "载入中...",
+                              "sInfoThousands": ",",
+                              "oPaginate": {
+                                  "sFirst": "首页",
+                                  "sPrevious": "上页",
+                                  "sNext": "下页",
+                                  "sLast": "末页"
+                              },
+                              "oAria": {
+                                  "sSortAscending": ": 以升序排列此列",
+                                  "sSortDescending": ": 以降序排列此列"
+                              }
+                          },
+                        //"serverSide" : true,//服务器端进行分页处理的意思
+                        //"bPaginate": true,
+                        //"bProcessing": true
+                        columns : [{data : "id"},{data:"pid"}],
+                        "columnDefs": [
+                        {
+                            "targets": [ 1 ],
+                            "visible": false,
+                            "searchable": false
+                        }]
+
+                    });
+                    draw();
+                    that.button("reset");
+                    $("#mytable tbody").on("mouseover","tr",function()
+                    {//给tr或者td添加click事件
+                        var data=table.row(this).data();//获取值的对象数据
+                        for(var j in t_paths[data['pid']]['path']){
+                            sname = t_paths[data['pid']]['path'][j]['start_node'];
+                            ename = t_paths[data['pid']]['path'][j]['end_node'];
+                            var items =edgeset.get({
+                                filter: function (item) {
+                                return ((item.from == sname && item.to == ename)||(item.from == sname && item.to == sname));
+                                }
+                            });
+                            //console.log(items);
+                            for(i=0;i<items.length;i++) {
+                                items[i].color = {
+                                    color: "#ff0000"
+                                }
+                                edgeset.update(items[i]);
+                            }
+                        }
+                    });
+                    $("#mytable tbody").on("mouseout","tr",function()
+                    {//给tr或者td添加click事件
+                        var data=table.row(this).data();//获取值的对象数据
+                        for(var j in t_paths[data['pid']]['path']) {
+                            sname = t_paths[data['pid']]['path'][j]['start_node'];
+                            ename = t_paths[data['pid']]['path'][j]['end_node'];
+                            var items = edgeset.get({
+                                filter: function (item) {
+                                    return ((item.from == sname && item.to == ename) || (item.from == sname && item.to == sname));
+                                }
+                            });
+                            for (i = 0; i < items.length; i++) {
+                                items[i].color = {
+                                    color:color_list[items[i]['rel_group']],
+                                    opacity:1.0
+                                }
+                                edgeset.update(items[i]);
+                            }
+                        }
+                    });
+                    $("#mytable tbody").on("click","tr",function()
+                    {//给tr或者td添加click事件
+                        var data=table.row(this).data();//获取值的对象数据
+                        if (DEBUG) {
+                            console.log(data['pid']);
+                        }
+                        tinynodes= [];
+                        tinyedges = [];
+                        tinypath = t_paths[data['pid']]['path'];
+                        tinynodes.push({id:tinypath[0]['start_node'],label:tinypath[0]['start_node'],x:100});
+                        xx = 200;
+                        for(var i in tinypath){
+                            if (DEBUG) {
+                                console.log("an edge!");
+                            }
+                            tinynodes.push({id:tinypath[i]['end_node'],label:tinypath[i]['end_node'],x:xx});
+                            xx += 1000
+                            rel_tmp = tinypath[i]['rel'].split("###")
+                            rel = [...new Set(rel_tmp)].join(",")
+                            tinyedges.push({
+                                id:tinypath[i]['start_node']+"&"+tinypath[i]['end_node'],
+                                label:rel,
+                                color:{color:color_list[tinypath[i]['rel_group']],opacity:1.0},
+                                from:tinypath[i]['start_node'],
+                                to:tinypath[i]['end_node'],
+                                // value:tinypath[i]['val'],
+                                title:tinypath[i]['val'],
+                                pid:i
+                            });
+                        }
+                        drawtiny();
+                        $("html,body").animate({scrollTop:$("#path-network").offset().top},1000);
+                    });
+                })
+            });
+            /* 处理页面参数 */
+            if(window.location.href.split("=").length>1){
+                ids = window.location.href.split("=")[1];
+                ids = decodeURI(ids);
+                if(ids.split("&").length>1){
+                    $("#fname").val(ids.split("&")[0]);
+                    $("#tname").val(ids.split("&")[1]);
+                    $('#btn-commit').trigger("click");
+                }
+                else{
+                    if(ids!=""){
+                         location.href="near.html?name="+ids;
+                    }
+                    else{
+                        //$("#fname").val("1");
+                        //$("#tname").val("2");
+                        //$('#btn-commit').trigger("click");
+                    }
+                }
+            }
+            else{
+                //$("#fname").val("扎克伯格");
+                //$("#tname").val("文继荣");
+                //$('#btn-commit').trigger("click");
+            }
+        });
+        function draw() 
+        {
+            var container = document.getElementById('mynetwork');
+            edgeset = new vis.DataSet(edges)
+            var data = {
+            nodes: nodes,
+            edges: edgeset
+            };
+            var options = {
+                nodes: {
+                    // shape: 'dot',
+                    scaling:{
+                        label: {
+                        min:8,
+                        max:20
+                        }
+                    },
+                    color:{
+                        highlight: {//节点选中时状态颜色
+                            background: '#ec7171',
+                            border: '#f90909'
+                        },
+                    }
+                },
+                layout:{
+                    randomSeed:1,//配置每次生成的节点位置都一样，参数为数字1、2等
+                },
+                physics: {
+                    barnesHut: {
+                    damping: 0.5,
+                    },
+                    stabilization:{
+                    },
+                    minVelocity: 0.75
+                },
+                edges: {//关系线控制
+                    smooth: true,//是否显示方向箭头
+                    arrows: {
+                        to: true,
+                        //from: true
+                    },
+                    font: {
+                        size: 15,
+                    },
+                    scaling:{
+                        label: {
+                            enabled: false,
+                            min: 15,
+                            max: 30,
+                        }
+                    }
+                }
+            };
+            network = new vis.Network(container, data, options);
+            /*
+            network.on("doubleClick", function(params) {//双击事
+                if(params.edges.length != 0){
+                    var click_edge_id = params.edges[0];
+                    console.log(click_edge_id);
+                    edge2names = click_edge_id.split("&");
+                    $.get(BASE_URL + "getEdgeinfo",{sname:edge2names[0],tname:edge2names[1]},function(data){
+                         $('#pcontent1').html("");
+                        console.log(data);
+                        $('#mypopever1').show();
+                        var x = params.pointer.DOM.x;
+                        var y = params.pointer.DOM.y;
+                        $('.popover-title').html(edge2names[0]+"与"+edge2names[1]);
+
+                        if(data.length==0){
+                             $('#pcontent1').html("未查询到相关信息");
+                            $('#mypopever1').css('left', (x + 10) + 'px');
+                            $('#mypopever1').css('top', (y - 20) + 'px');
+                            return ;
+                        }
+                        var str = ""
+                        /*
+                        for(var iter=0;iter<data.length;iter++){
+                            str+= "新闻"+(iter+1)+"：</br>";
+                            str+= "  时间："+data[iter]['TimeStr']+"</br>";
+                            str+="内容："+data[iter]['Text']+"</br>"+"-------------------</br>"
+                        }
+                        */
+                        /*
+                        console.log("str = "+str);
+                        $('#pcontent1').html(str);
+                        $('#mypopever1').css('left', (x + 10) + 'px');
+                        $('#mypopever1').css('top', (y - 20) + 'px');
+                    })
+                }
+             });*/
+        }
+        function drawtiny(){
+            var container = document.getElementById('path-network');
+            tinyedgeset = new vis.DataSet(edges)
+            var data = {
+            nodes: tinynodes,
+            edges: tinyedges
+            };
+            var options = {
+                nodes: {
+                    // shape: 'dot',
+                    scaling:{
+                        label: {
+                        min:8,
+                        max:20
+                        }
+                    },
+                    color:{
+                        highlight: {//节点选中时状态颜色
+                            background: '#ec7171',
+                            border: '#f90909'
+                        },
+                    },
+                    font:{
+                        size:15
+                    }
+                },
+                layout:{
+                    randomSeed:1,//配置每次生成的节点位置都一样，参数为数字1、2等
+                },
+                edges: {//关系线控制
+                    smooth: true,//是否显示方向箭头
+                    arrows: {
+                        to: true,
+                        //from: true
+                    },
+                    font: {
+                        size: 15,
+                    },
+                    scaling:{
+                        label: {
+                            enabled: false,
+                            min: 15,
+                            max: 30,
+                        }
+                    }
+                }
+            };
+            tinynetwork = new vis.Network(container, data, options);
+            /*
+            tinynetwork.on("doubleClick", function(params) {//双击事
+                if(params.edges.length != 0){
+                    var click_edge_id = params.edges[0];
+                    console.log(click_edge_id);
+                    edge2names = click_edge_id.split("&");
+                    $.get(BASE_URL + "getEdgeinfo",{sname:edge2names[0],tname:edge2names[1]},function(data){
+                         $('#pcontent2').html("");
+                        console.log(data);
+                        $('#mypopever2').show();
+                        var x = params.pointer.DOM.x;
+                        var y = params.pointer.DOM.y;
+                        $('#ptitle2').html(edge2names[0]+"与"+edge2names[1]);
+                        if(data.length==0){
+                             $('#pcontent2').html("未查询到相关信息");
+                            $('#mypopever2').css('left', (x + 10) + 'px');
+                            $('#mypopever2').css('top', (y - 20) + 'px');
+                            return ;
+                        }
+                        var str = ""
+                        /*
+                        for(var iter=0;iter<data.length;iter++){
+                            str+= "新闻"+(iter+1)+"：</br>";
+                            str+= "  时间："+data[iter]['TimeStr']+"</br>";
+                            str+="内容："+data[iter]['Text']+"</br>"+"-------------------</br>"
+                        }
+                         */
+                        /*
+                        $('#pcontent2').html(str);
+                        $('#mypopever2').css('left', (x + 10) + 'px');
+                        $('#mypopever2').css('top', (y - 20) + 'px');
+                    })
+                }
+             });*/
+        }
+  </script>
+</body>
+</html>
