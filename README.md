@@ -26,7 +26,7 @@
 
 ## 基于预置知识图谱数据的网站运行方法
 
-1. 运行`python manage.py runserver ip:port`
+1. 运行`python manage.py runserver 127.0.0.1:8010`
 
 ## 简单流程运行方法
 
