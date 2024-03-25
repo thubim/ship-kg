@@ -8,6 +8,14 @@
 
 3. **neo4j数据库**
 
+## pip包依赖
+
+- hydra-core 1.0.6
+- jieba 0.42.1
+- pyltp 0.4.0
+- PaddlePaddle 2.0.2
+- PyTorch 1.2.0
+
 ## 简单运行方法
 
 1. 【kg_diango/kg_building/code/main/run】运行`python simple_run.py`
